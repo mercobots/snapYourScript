@@ -223,6 +223,7 @@ local function saveData()
     elseif OBJ.type == "color" then
         if CFG_COL_DIFF then getDiff() end
         COL[OBJ.name] = clone_table(OBJ.data_color)
+        COL[OBJ.name].location = OBJ.data
         fPointer:write(table_to_string(COL))
     end
     io.close(fPointer)
