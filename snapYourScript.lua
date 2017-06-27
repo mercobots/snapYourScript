@@ -26,7 +26,7 @@ luaLib()
 
 -- Dialogs
 -- ---------------------------------------
-dialogs = {
+local dialogs = {
     config = function()
         dialogInit()
         --
@@ -39,7 +39,7 @@ dialogs = {
         addTextView("\t Time between each new capture \t\t") addEditNumber("CFG_CAPTURE_WAIT", 3)
         newRow()
         --
-        addTextView("\t Immersive mode \t\t") addCheckBox("CFG_IMMERSIVE", "", false)
+        addTextView("\t Immersive mode \t\t") addCheckBox("CFG_IMMERSIVE", "", true)
         --
         newRow()
         addTextView("")
@@ -67,25 +67,21 @@ dialogs = {
         addTextView("\t Time between each color capture \t\t") addEditNumber("CFG_COL_CLICK_TIME", 0.1)
         newRow()
         --
-        addTextView("\t Calculate Diff \t\t") addCheckBox("CFG_COL_DIFF", "", true)
-        newRow()
-        --
         dialogShowFullScreen("Config")
+    end,
+    var_name = function()
+        dialogInit()
+        addTextView("")
+        newRow()
+        addTextView("\t Variable Name: ") addEditText("NEW_REC_VAR_NAME", "")
+        newRow()
+        addTextView("")
+        dialogShowFullScreen("")
     end,
     new_record = function()
         dialogInit()
         addTextView("")
         newRow()
-        --
-        addTextView("\t Variable Name: ") addEditText("NEW_REC_VAR_NAME", "")
-        --
-        newRow()
-        addTextView("")
-        --
-        addSeparator()
-        addTextView("")
-        newRow()
-        --
         addRadioGroup("NEW_REC_OP", 1)
         addRadioButton("New Image", 1)
         addRadioButton("New Region", 2)
@@ -104,9 +100,6 @@ dialogs = {
         --
         addTextView("")
         newRow()
-        --
-        addTextView("\t Var name = " .. OBJ.name)
-        newRow()
         if OBJ.type == "location" then
             addTextView("\t " .. location_to_string(OBJ.data))
         elseif OBJ.type == "region" then
@@ -119,8 +112,12 @@ dialogs = {
             addTextView("\t " .. location_to_string(OBJ.data))
             for i, v in ipairs(OBJ.data_color) do
                 newRow()
-                addTextView("\t color[" .. i .. "] R =" .. OBJ.data_color[i].r .. " G =" .. OBJ.data_color[i].g .. " B =" .. OBJ.data_color[i].b)
+                addTextView("\t color[" .. i .. "] RGB= " .. OBJ.data_color[i].r .. ", " .. OBJ.data_color[i].g .. ", " .. OBJ.data_color[i].b)
             end
+            newRow()
+            addTextView("\t Diff max  RGB= " .. OBJ.data_color.diff.max.r .. ", " .. OBJ.data_color.diff.max.g .. ", " .. OBJ.data_color.diff.max.b)
+            newRow()
+            addTextView("\t Diff min  RGB= " .. OBJ.data_color.diff.min.r .. ", " .. OBJ.data_color.diff.min.g .. ", " .. OBJ.data_color.diff.min.b)
         end
         --
         newRow()
@@ -151,7 +148,7 @@ dialogs = {
         addTextView("")
         newRow()
         --
-        addTextView("\t " .. OBJ.type .. " - " .. OBJ.name)
+        addTextView("\t " .. OBJ.type)
         --
         newRow()
         addTextView("")
@@ -184,6 +181,23 @@ dialogs = {
         dialogShowFullScreen("")
     end,
 }
+
+-- check name
+-- -- exists,
+-- -- no white spaces
+-- -- special characters
+-- ---------------------------------------
+local function varName(name)
+    name = trim(name)
+    if name:len() <= 0 then
+        simpleDialog("", "\n\t Name must be provided \n") return false
+    elseif not name:match("^[a-zA-Z0-9_]*$") then
+        simpleDialog("", "\n\t Name must only contain alphanumeric characters,\"_\" underscore and no spaces \n") return false
+    elseif in_table(VARS_LIST, name) then
+        simpleDialog("", "\n\t [" .. name .. "] - This Name already exists\n") return false
+    else return true
+    end
+end
 
 -- obj Highlight
 -- ---------------------------------------
@@ -241,6 +255,60 @@ local function objHighlight(pointer)
     end
 end
 
+
+
+-- Save data to file
+-- ---------------------------------------
+local function saveData()
+    while TRUE do
+        dialogs.var_name()
+        if varName(NEW_REC_VAR_NAME) then
+            OBJ.name = NEW_REC_VAR_NAME
+            local folder = ROOT .. CFG_FOLDER_NAME .. "/"
+            local file = OBJ.type .. ".luar"
+            local full_path = "" .. folder .. file .. ""
+            --
+            if not mkdir(folder) then simpleDialog("ERROR", "\n\t Cannot create new folder \n\n\t " .. folder) end
+            --
+            local fPointer = assert(io.open(full_path, "w+"))
+            fPointer:write(OBJ.type .. " = ")
+            --
+            if OBJ.type == "location" then
+                --
+                LOC[OBJ.name] = OBJ.data
+                fPointer:write(table_to_string(LOC))
+                --
+            elseif OBJ.type == "region" then
+                --
+                REG[OBJ.name] = OBJ.data
+                fPointer:write(table_to_string(REG))
+                --
+            elseif OBJ.type == "image" then
+                --
+                wait(1)
+                IMG[OBJ.name .. "_region"] = OBJ.data_img
+                OBJ.data:save(OBJ.name .. ".png")
+                fPointer:write(table_to_string(IMG))
+                --
+            elseif OBJ.type == "color" then
+                --
+                COL[OBJ.name] = {}
+                COL[OBJ.name].location = OBJ.data
+                COL[OBJ.name].colors = clone_table(OBJ.data_color)
+                fPointer:write(table_to_string(COL))
+                --
+            end
+            io.close(fPointer)
+
+            --
+            table.insert(VARS_LIST, OBJ.name)
+            OBJ = clone_table({})
+            removePreference("NEW_REC_VAR_NAME")
+            break
+        end
+    end
+end
+
 --
 -- ---------------------------------------
 local function getDiff()
@@ -267,50 +335,6 @@ local function getDiff()
     --
     --
 end
-
--- Save data to file
--- ---------------------------------------
-local function saveData()
-    local folder = ROOT .. CFG_FOLDER_NAME .. "/"
-    local file = OBJ.type .. ".luar"
-    local full_path = "" .. folder .. file .. ""
-    --
-    if not mkdir(folder) then simpleDialog("ERROR", "\n\t Cannot create new folder \n\n\t " .. folder) end
-    --
-    local fPointer = assert(io.open(full_path, "w+"))
-    fPointer:write(OBJ.type .. " = ")
-    --
-    if OBJ.type == "location" then
-        --
-        LOC[OBJ.name] = OBJ.data
-        fPointer:write(table_to_string(LOC))
-        --
-    elseif OBJ.type == "region" then
-        --
-        REG[OBJ.name] = OBJ.data
-        fPointer:write(table_to_string(REG))
-        --
-    elseif OBJ.type == "image" then
-        --
-        IMG[OBJ.name .. "_region"] = OBJ.data_img
-        OBJ.data:save(OBJ.name .. ".png")
-        fPointer:write(table_to_string(IMG))
-        --
-    elseif OBJ.type == "color" then
-        --
-        if CFG_COL_DIFF then getDiff() end
-        COL[OBJ.name] = OBJ.data
-        COL[OBJ.name].colors = clone_table(OBJ.data_color)
-        fPointer:write(table_to_string(COL))
-        --
-    end
-    io.close(fPointer)
-
-    --
-    table.insert(VARS_LIST, OBJ.name)
-    OBJ = clone_table({})
-end
-
 
 --
 -- ---------------------------------------
@@ -358,6 +382,7 @@ local function newObj()
                         if not is_timeout(timer, CFG_COL_CLICK_TIME) then wait(CFG_COL_CLICK_TIME - timer:set()) end
                     end
                     OBJ.data_color = clone_table(colors)
+                    getDiff()
                 end
                 --
                 objHighlight("off")
@@ -409,15 +434,6 @@ local function editValues()
     end
 end
 
---
--- ---------------------------------------
-local function objLastValue()
-    local txt
-    if OBJ.type == "location" then
-        txt = location_to_string(OBJ.data)
-    end
-end
-
 -- New obj menu
 -- ---------------------------------------
 local function menuObj()
@@ -443,23 +459,6 @@ local function menuObj()
             OBJ = {}
             break
         end
-    end
-end
-
--- check name
--- -- exists,
--- -- no white spaces
--- -- special characters
--- ---------------------------------------
-local function varName(name)
-    name = trim(name)
-    if name:len() <= 0 then
-        simpleDialog("", "\n\t Name must be provided \n") return false
-    elseif not name:match("^[a-zA-Z0-9_]*$") then
-        simpleDialog("", "\n\t Name must only contain alphanumeric characters,\"_\" underscore and no spaces \n") return false
-    elseif in_table(VARS_LIST, name) then
-        simpleDialog("", "\n\t [" .. name .. "] - This Name already exists\n") return false
-    else return true
     end
 end
 
@@ -497,25 +496,21 @@ while TRUE do
     --
     if NEW_REC_OP == 5 then
         wait(3)
-    elseif varName(NEW_REC_VAR_NAME) then
         --
-        OBJ.name = NEW_REC_VAR_NAME
-        --
-        if NEW_REC_OP == 1 then
-            OBJ.type = "image"
-            menuObj()
-        elseif NEW_REC_OP == 2 then
-            OBJ.type = "region"
-            menuObj()
-        elseif NEW_REC_OP == 3 then
-            OBJ.type = "location"
-            menuObj()
-        elseif NEW_REC_OP == 4 then
-            OBJ.type = "color"
-            menuObj()
-        end
-        --
-        removePreference("NEW_REC_VAR_NAME")
-        wait(CFG_CAPTURE_WAIT)
+    elseif NEW_REC_OP == 1 then
+        OBJ.type = "image"
+        menuObj()
+    elseif NEW_REC_OP == 2 then
+        OBJ.type = "region"
+        menuObj()
+    elseif NEW_REC_OP == 3 then
+        OBJ.type = "location"
+        menuObj()
+    elseif NEW_REC_OP == 4 then
+        OBJ.type = "color"
+        menuObj()
     end
+    --
+    wait(CFG_CAPTURE_WAIT)
 end
+
