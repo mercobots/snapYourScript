@@ -116,6 +116,7 @@ dialogs = {
             newRow()
             addTextView("\t Searching region = " .. region_to_string(OBJ.data_img))
         elseif OBJ.type == "color" then
+            addTextView("\t " .. location_to_string(OBJ.data))
             for i, v in ipairs(OBJ.data_color) do
                 newRow()
                 addTextView("\t color[" .. i .. "] R =" .. OBJ.data_color[i].r .. " G =" .. OBJ.data_color[i].g .. " B =" .. OBJ.data_color[i].b)
