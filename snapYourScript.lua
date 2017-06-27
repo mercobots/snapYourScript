@@ -1,8 +1,4 @@
---
--- ---------------------------------------
-SCRIPT_DIMENSION = getRealScreenSize():getX()
-
---
+-- Global vars
 -- ---------------------------------------
 TRUE = true
 --
@@ -13,30 +9,27 @@ REG = {}
 LOC = {}
 COL = {}
 IMG = {}
---
+
+-- Local vars
+-- ---------------------------------------
 local OBJ = {}
 
---
--- ---------------------------------------
 -- commonLib
+-- ---------------------------------------
 commonLib = loadstring(httpGet("https://raw.githubusercontent.com/AnkuLua/commonLib/master/commonLib.lua"))
 commonLib()
---
--- ---------------------------------------
+
 -- luaLib
+-- ---------------------------------------
 luaLib = loadstring(httpGet("https://raw.githubusercontent.com/mercobots/luaLib/master/luaLib.min.lua"))
 luaLib()
 
---
---
--- ---------------------------------------
-
---
+-- Dialogs
 -- ---------------------------------------
 dialogs = {
     config = function()
         dialogInit()
-
+        --
         addTextView("\n\t GENERAL \n\t----------------------------------")
         newRow()
         --
@@ -84,8 +77,7 @@ dialogs = {
         addTextView("")
         newRow()
         --
-        addTextView("\t Variable Name: ")
-        addEditText("NEW_REC_VAR_NAME", "")
+        addTextView("\t Variable Name: ") addEditText("NEW_REC_VAR_NAME", "")
         --
         newRow()
         addTextView("")
@@ -99,7 +91,8 @@ dialogs = {
         addRadioButton("New Region", 2)
         addRadioButton("New Location", 3)
         addRadioButton("New Color", 4)
-        addRadioButton("\n← EXIT \n", 5)
+        addRadioButton("\n Stop 3 seconds \n", 5)
+        addRadioButton("\n← EXIT \n", 6)
         --
         newRow()
         addTextView("")
@@ -108,6 +101,7 @@ dialogs = {
     end,
     obj_options = function()
         dialogInit()
+        --
         addTextView("")
         newRow()
         --
@@ -137,6 +131,7 @@ dialogs = {
     end,
     edit_values = function()
         local values = get_values(OBJ.data)
+        --
         dialogInit()
         addTextView("")
         newRow()
@@ -200,6 +195,8 @@ local function getDiff()
     --
 end
 
+-- Save data to file
+-- ---------------------------------------
 local function saveData()
     local folder = ROOT .. CFG_FOLDER_NAME .. "/"
     local file = OBJ.type .. ".luar"
@@ -217,7 +214,7 @@ local function saveData()
         REG[OBJ.name] = OBJ.data
         fPointer:write(table_to_string(REG))
     elseif OBJ.type == "image" then
-        IMG[OBJ.name.."_region"] = OBJ.data_img
+        IMG[OBJ.name .. "_region"] = OBJ.data_img
         OBJ.data:save(OBJ.name .. ".png")
         fPointer:write(table_to_string(IMG))
     elseif OBJ.type == "color" then
@@ -233,12 +230,66 @@ local function saveData()
     OBJ = clone_table({})
 end
 
-
--- Get region
+-- obj Highlight
 -- ---------------------------------------
-local function eventListener(obj_type)
-    while TRUE do
+local hl = {}
+local function objHighlight(pointer)
+    wait(0.1)
+    setHighlightStyle(0x66ff0000, true)
+    wait(0.1)
+    if OBJ.type == "region" then
+        OBJ.data:highlight(2)
+    elseif OBJ.type == "image" then
+        toast("image")
+        wait(0.1)
+        setHighlightStyle(0x66ff0000, false)
+        wait(0.1)
+        OBJ.data_img:highlight()
+        wait(0.1)
+        setHighlightStyle(0x66ff0000, true)
+        wait(0.1)
+        OBJ.data:highlight()
+        --
+        wait(2)
+        --
+        OBJ.data:highlightOff()
+        OBJ.data_img:highlightOff()
+        setHighlightStyle(0x66ff0000, true)
+        wait(0.1)
+    elseif OBJ.type == "location" or OBJ.type == "color" then
+        local loc = get_values(OBJ.data)
+        local size = 7
+        wait(0.1)
+        setHighlightStyle(0x66ff0000, false)
+        wait(0.1)
+        if pointer == "on" then
+            hl.c = Region(loc.x - size, loc.y - size, size * 2, size * 2)
+            hl.h1 = Region(loc.x - (size * 3), loc.y - 1, size * 2, 2)
+            hl.h2 = Region(loc.x + size, loc.y - 1, size * 2, 2)
+            hl.v1 = Region(loc.x - 1, loc.y - (size * 3), 2, size * 2)
+            hl.v2 = Region(loc.x - 1, loc.y + size, 2, size * 2)
 
+            hl.c:highlight()
+            hl.h1:highlight()
+            hl.h2:highlight()
+            hl.v1:highlight()
+            hl.v2:highlight()
+        elseif pointer == "off" then
+            if OBJ.type == "location" then wait(2) end
+            hl.c:highlightOff()
+            hl.h1:highlightOff()
+            hl.h2:highlightOff()
+            hl.v1:highlightOff()
+            hl.v2:highlightOff()
+            hl = {}
+        end
+    end
+end
+
+--
+-- ---------------------------------------
+local function eventListener()
+    while TRUE do
         --
         local action, locTable, touchTable = getTouchEvent()
         --
@@ -255,29 +306,10 @@ local function eventListener(obj_type)
                 w = math.abs(loc_1.x - loc_2.x)
                 h = math.abs(loc_1.y - loc_2.y)
                 --
-
-                --
                 OBJ.data = Region(x, y, w, h)
-
-                if OBJ.type == "image" then
-                    --
-                    OBJ.data_img = Region(x - CFG_IMG_REG, y - CFG_IMG_REG, w + (CFG_IMG_REG * 2), h + (CFG_IMG_REG * 2))
-                    --
-                    setHighlightStyle(0x66000000, false)
-                    OBJ.data_img:highlight()
-                    --
-                    wait(0.1)
-                    setHighlightStyle(0x66ff0000, true)
-                    OBJ.data:highlight()
-                    --
-                    wait(2)
-                    --
-                    OBJ.data:highlightOff()
-                    OBJ.data_img:highlightOff()
-                    --
-                else
-                    OBJ.data:highlight(2)
-                end
+                if OBJ.type == "image" then OBJ.data_img = Region(x - CFG_IMG_REG, y - CFG_IMG_REG, w + (CFG_IMG_REG * 2), h + (CFG_IMG_REG * 2)) end
+                --
+                objHighlight()
                 --
                 break
             else
@@ -286,24 +318,10 @@ local function eventListener(obj_type)
 
         elseif OBJ.type == "location" or OBJ.type == "color" then
             if action == "click" or action == "longClick" then
+                --
                 OBJ.data = locTable
-                local loc = get_values(OBJ.data)
-                local size = 7
-                setHighlightStyle(0xffFE0000, false)
-
-                --Region(loc.x - size, loc.y - size, size*2, size*2):highlight(2)
-                local c = Region(loc.x - size, loc.y - size, size * 2, size * 2)
-                local h1 = Region(loc.x - (size * 3), loc.y - 1, size * 2, 2)
-                local h2 = Region(loc.x + size, loc.y - 1, size * 2, 2)
-                local v1 = Region(loc.x - 1, loc.y - (size * 3), 2, size * 2)
-                local v2 = Region(loc.x - 1, loc.y + size, 2, size * 2)
-
-                c:highlight()
-                h1:highlight()
-                h2:highlight()
-                v1:highlight()
-                v2:highlight()
-
+                objHighlight("on")
+                --
                 if OBJ.type == "color" then
                     local timer = Timer()
                     local colors = {}
@@ -314,17 +332,9 @@ local function eventListener(obj_type)
                         if not is_timeout(timer, CFG_COL_CLICK_TIME) then wait(CFG_COL_CLICK_TIME - timer:set()) end
                     end
                     OBJ.data_color = clone_table(colors)
-                else
-                    wait(2)
                 end
                 --
-                c:highlightOff()
-                h1:highlightOff()
-                h2:highlightOff()
-                v1:highlightOff()
-                v2:highlightOff()
-
-                setHighlightStyle(0x66ff0000, true)
+                objHighlight("off")
                 break
             else
                 simpleDialog("", "Invalid action : " .. action)
@@ -348,44 +358,15 @@ local function editValues()
     --
     if OBJ.type == "region" then
         OBJ.data = Region(EDIT_VAL_X, EDIT_VAL_Y, EDIT_VAL_W, EDIT_VAL_H)
-        OBJ.data:highlight(2)
+        objHighlight()
     elseif OBJ.type == "image" then
         OBJ.data = Region(EDIT_VAL_X, EDIT_VAL_Y, EDIT_VAL_W, EDIT_VAL_H)
         OBJ.data_img = Region(EDIT_VAL_X - CFG_IMG_REG, EDIT_VAL_Y - CFG_IMG_REG, EDIT_VAL_W + (CFG_IMG_REG * 2), EDIT_VAL_H + (CFG_IMG_REG * 2))
-        --
-        setHighlightStyle(0x66000000, false)
-        OBJ.data_img:highlight()
-        --
-        wait(0.1)
-        setHighlightStyle(0x66ff0000, true)
-        OBJ.data:highlight()
-        --
-        wait(2)
-        --
-        OBJ.data:highlightOff()
-        OBJ.data_img:highlightOff()
-        --
-
+        objHighlight()
     elseif OBJ.type == "location" or OBJ.type == "color" then
         OBJ.data = Location(EDIT_VAL_X, EDIT_VAL_Y)
-
-        local loc = get_values(OBJ.data)
-        local size = 7
-        setHighlightStyle(0xffFE0000, false)
-
-        --Region(loc.x - size, loc.y - size, size*2, size*2):highlight(2)
-        local c = Region(loc.x - size, loc.y - size, size * 2, size * 2)
-        local h1 = Region(loc.x - (size * 3), loc.y - 1, size * 2, 2)
-        local h2 = Region(loc.x + size, loc.y - 1, size * 2, 2)
-        local v1 = Region(loc.x - 1, loc.y - (size * 3), 2, size * 2)
-        local v2 = Region(loc.x - 1, loc.y + size, 2, size * 2)
-
-        c:highlight()
-        h1:highlight()
-        h2:highlight()
-        v1:highlight()
-        v2:highlight()
-
+        objHighlight("start")
+        --
         if OBJ.type == "color" then
             local timer = Timer()
             local colors = {}
@@ -396,28 +377,19 @@ local function editValues()
                 if not is_timeout(timer, CFG_COL_CLICK_TIME) then wait(CFG_COL_CLICK_TIME - timer:set()) end
             end
             OBJ.data_color = clone_table(colors)
-        else
-            wait(2)
         end
         --
-        c:highlightOff()
-        h1:highlightOff()
-        h2:highlightOff()
-        v1:highlightOff()
-        v2:highlightOff()
-
-        setHighlightStyle(0x66ff0000, true)
+        objHighlight("end")
     end
 end
 
--- new region
+-- New obj menu
 -- ---------------------------------------
-local function newObj()
+local function menuObj()
     local obj
     local listener = true
     while TRUE do
         removePreference("OBJ_OP")
-
         --
         if listener then eventListener() end
 
@@ -433,76 +405,80 @@ local function newObj()
             listener = true
             -- continue loop
         elseif OBJ_OP == 4 then
-            OBJ = clone_table({})
+            OBJ = {}
             break
         end
     end
 end
 
--- varNameIsValid
+-- check name
+-- -- exists,
+-- -- no white spaces
+-- -- special characters
 -- ---------------------------------------
 local function varName(name)
     name = trim(name)
     if name:len() <= 0 then
-        simpleDialog("", "\n\t Variable name must be provided \n") return false
+        simpleDialog("", "\n\t Name must be provided \n") return false
     elseif not name:match("^[a-zA-Z0-9_]*$") then
-        simpleDialog("", "\n\t Variable name must only contain alphanumeric characters,\"_\" underscore and no spaces \n") return false
+        simpleDialog("", "\n\t Name must only contain alphanumeric characters,\"_\" underscore and no spaces \n") return false
     elseif in_table(VARS_LIST, name) then
-        simpleDialog("", "\n\t [" .. name .. "] - This variable name already exists\n") return false
+        simpleDialog("", "\n\t [" .. name .. "] - This Name already exists\n") return false
     else return true
     end
 end
 
-
--- Start program
+-- Start config
 -- ---------------------------------------
 while TRUE do
     dialogs.config()
     if varName(CFG_FOLDER_NAME) then break end
 end
---
---
+
+
+-- Ankulua settings
+-- ---------------------------------------
 setImmersiveMode(CFG_IMMERSIVE)
 SCRIPT_DIMENSION = CFG_IMMERSIVE and getRealScreenSize():getX() or getAppUsableScreenSize():getX()
-
 --
--- ---------------------------------------
 Settings:setScriptDimension(true, SCRIPT_DIMENSION)
 Settings:setCompareDimension(true, SCRIPT_DIMENSION)
 --
 mkdir(ROOT .. CFG_FOLDER_NAME .. "/images/")
 setImagePath(ROOT .. CFG_FOLDER_NAME .. "/images/")
 --
---setTouchEventStyle(0x80472E6B)
-setHighlightStyle(0x66ff0000, true)
-setHighlightTextStyle(0x66ff0000, 0x80ffffff, 16)
 
+
+-- Preference reset
+-- ---------------------------------------
 removePreference("NEW_REC_OP")
 removePreference("NEW_REC_VAR_NAME")
 
 
 while TRUE do
-    --getEvent()
+    --
     dialogs.new_record()
     --
-    if NEW_REC_OP == 5 then scriptExit() end
+    if NEW_REC_OP == 6 then scriptExit() end
     --
-    if varName(NEW_REC_VAR_NAME) then
+    if NEW_REC_OP == 5 then
+        wait(3)
+    elseif varName(NEW_REC_VAR_NAME) then
         --
         OBJ.name = NEW_REC_VAR_NAME
         --
         if NEW_REC_OP == 1 then
             OBJ.type = "image"
-            newObj()
+            menuObj()
         elseif NEW_REC_OP == 2 then
             OBJ.type = "region"
-            newObj()
+            menuObj()
         elseif NEW_REC_OP == 3 then
             OBJ.type = "location"
-            newObj()
+            menuObj()
         elseif NEW_REC_OP == 4 then
             OBJ.type = "color"
-            newObj()
+            menuObj()
         end
         --
         removePreference("NEW_REC_VAR_NAME")
