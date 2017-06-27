@@ -105,11 +105,25 @@ dialogs = {
         addTextView("")
         newRow()
         --
-        addTextView("\t " .. OBJ.type .. " - " .. OBJ.name)
+        addTextView("\t Var name = " .. OBJ.name)
+        newRow()
+        if OBJ.type == "location" then
+            addTextView("\t " .. location_to_string(OBJ.data))
+        elseif OBJ.type == "region" then
+            addTextView("\t " .. region_to_string(OBJ.data))
+        elseif OBJ.type == "image" then
+            addTextView("\t Image = " .. region_to_string(OBJ.data))
+            newRow()
+            addTextView("\t Searching region = " .. region_to_string(OBJ.data_img))
+        elseif OBJ.type == "color" then
+            for i, v in ipairs(OBJ.data_color) do
+                newRow()
+                addTextView("\t color[" .. i .. "] R =" .. OBJ.data_color[i].r .. " G =" .. OBJ.data_color[i].g .. " B =" .. OBJ.data_color[i].b)
+            end
+        end
         --
         newRow()
         addTextView("")
-        --
         addSeparator()
         addTextView("")
         newRow()
@@ -170,6 +184,64 @@ dialogs = {
     end,
 }
 
+-- obj Highlight
+-- ---------------------------------------
+local hl = {}
+local function objHighlight(pointer)
+    wait(0.1)
+    setHighlightStyle(0x66ff0000, true)
+    wait(0.1)
+    if OBJ.type == "region" then
+        OBJ.data:highlight(2)
+    elseif OBJ.type == "image" then
+        toast("image")
+        wait(0.1)
+        setHighlightStyle(0x66ff0000, false)
+        wait(0.1)
+        OBJ.data_img:highlight()
+        wait(0.1)
+        setHighlightStyle(0x66ff0000, true)
+        wait(0.1)
+        OBJ.data:highlight()
+        --
+        wait(2)
+        --
+        OBJ.data:highlightOff()
+        OBJ.data_img:highlightOff()
+        setHighlightStyle(0x66ff0000, true)
+        wait(0.1)
+    elseif OBJ.type == "location" or OBJ.type == "color" then
+        local loc = get_values(OBJ.data)
+        local size = 7
+        wait(0.1)
+        setHighlightStyle(0xccff0000, false)
+        wait(0.1)
+        if pointer == "on" then
+            hl.c = Region(loc.x - size, loc.y - size, size * 2, size * 2)
+            hl.h1 = Region(loc.x - (size * 3), loc.y - 1, size * 2, 2)
+            hl.h2 = Region(loc.x + size, loc.y - 1, size * 2, 2)
+            hl.v1 = Region(loc.x - 1, loc.y - (size * 3), 2, size * 2)
+            hl.v2 = Region(loc.x - 1, loc.y + size, 2, size * 2)
+
+            hl.c:highlight()
+            hl.h1:highlight()
+            hl.h2:highlight()
+            hl.v1:highlight()
+            hl.v2:highlight()
+        elseif pointer == "off" then
+            if OBJ.type == "location" then wait(2) end
+            hl.c:highlightOff()
+            hl.h1:highlightOff()
+            hl.h2:highlightOff()
+            hl.v1:highlightOff()
+            hl.v2:highlightOff()
+            hl = {}
+        end
+    end
+end
+
+--
+-- ---------------------------------------
 local function getDiff()
     OBJ.data_color.diff = { max = { r = 0, g = 0, b = 0 }, min = { r = 255, g = 255, b = 255 } }
     for i, v in ipairs(OBJ.data_color) do
@@ -208,20 +280,28 @@ local function saveData()
     fPointer:write(OBJ.type .. " = ")
     --
     if OBJ.type == "location" then
+        --
         LOC[OBJ.name] = OBJ.data
         fPointer:write(table_to_string(LOC))
+        --
     elseif OBJ.type == "region" then
+        --
         REG[OBJ.name] = OBJ.data
         fPointer:write(table_to_string(REG))
+        --
     elseif OBJ.type == "image" then
+        --
         IMG[OBJ.name .. "_region"] = OBJ.data_img
         OBJ.data:save(OBJ.name .. ".png")
         fPointer:write(table_to_string(IMG))
+        --
     elseif OBJ.type == "color" then
+        --
         if CFG_COL_DIFF then getDiff() end
-        COL[OBJ.name] = clone_table(OBJ.data_color)
-        COL[OBJ.name].location = OBJ.data
+        COL[OBJ.name] = OBJ.data
+        COL[OBJ.name].colors = clone_table(OBJ.data_color)
         fPointer:write(table_to_string(COL))
+        --
     end
     io.close(fPointer)
 
@@ -230,65 +310,10 @@ local function saveData()
     OBJ = clone_table({})
 end
 
--- obj Highlight
--- ---------------------------------------
-local hl = {}
-local function objHighlight(pointer)
-    wait(0.1)
-    setHighlightStyle(0x66ff0000, true)
-    wait(0.1)
-    if OBJ.type == "region" then
-        OBJ.data:highlight(2)
-    elseif OBJ.type == "image" then
-        toast("image")
-        wait(0.1)
-        setHighlightStyle(0x66ff0000, false)
-        wait(0.1)
-        OBJ.data_img:highlight()
-        wait(0.1)
-        setHighlightStyle(0x66ff0000, true)
-        wait(0.1)
-        OBJ.data:highlight()
-        --
-        wait(2)
-        --
-        OBJ.data:highlightOff()
-        OBJ.data_img:highlightOff()
-        setHighlightStyle(0x66ff0000, true)
-        wait(0.1)
-    elseif OBJ.type == "location" or OBJ.type == "color" then
-        local loc = get_values(OBJ.data)
-        local size = 7
-        wait(0.1)
-        setHighlightStyle(0x66ff0000, false)
-        wait(0.1)
-        if pointer == "on" then
-            hl.c = Region(loc.x - size, loc.y - size, size * 2, size * 2)
-            hl.h1 = Region(loc.x - (size * 3), loc.y - 1, size * 2, 2)
-            hl.h2 = Region(loc.x + size, loc.y - 1, size * 2, 2)
-            hl.v1 = Region(loc.x - 1, loc.y - (size * 3), 2, size * 2)
-            hl.v2 = Region(loc.x - 1, loc.y + size, 2, size * 2)
-
-            hl.c:highlight()
-            hl.h1:highlight()
-            hl.h2:highlight()
-            hl.v1:highlight()
-            hl.v2:highlight()
-        elseif pointer == "off" then
-            if OBJ.type == "location" then wait(2) end
-            hl.c:highlightOff()
-            hl.h1:highlightOff()
-            hl.h2:highlightOff()
-            hl.v1:highlightOff()
-            hl.v2:highlightOff()
-            hl = {}
-        end
-    end
-end
 
 --
 -- ---------------------------------------
-local function eventListener()
+local function newObj()
     while TRUE do
         --
         local action, locTable, touchTable = getTouchEvent()
@@ -383,6 +408,15 @@ local function editValues()
     end
 end
 
+--
+-- ---------------------------------------
+local function objLastValue()
+    local txt
+    if OBJ.type == "location" then
+        txt = location_to_string(OBJ.data)
+    end
+end
+
 -- New obj menu
 -- ---------------------------------------
 local function menuObj()
@@ -391,7 +425,7 @@ local function menuObj()
     while TRUE do
         removePreference("OBJ_OP")
         --
-        if listener then eventListener() end
+        if listener then newObj() end
 
         dialogs.obj_options()
 
@@ -453,7 +487,6 @@ setImagePath(ROOT .. CFG_FOLDER_NAME .. "/images/")
 -- ---------------------------------------
 removePreference("NEW_REC_OP")
 removePreference("NEW_REC_VAR_NAME")
-
 
 while TRUE do
     --
