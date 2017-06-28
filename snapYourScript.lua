@@ -39,7 +39,7 @@ local dialogs = {
         addTextView("\t Time between each new capture \t\t") addEditNumber("CFG_CAPTURE_WAIT", 3)
         newRow()
         --
-        addTextView("\t Immersive mode \t\t") addCheckBox("CFG_IMMERSIVE", "", true)
+        addTextView("\t Immersive mode \t\t") addCheckBox("CFG_IMMERSIVE", "", false)
         --
         newRow()
         addTextView("")
