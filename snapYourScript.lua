@@ -87,8 +87,9 @@ local dialogs = {
         addRadioButton("New Region", 2)
         addRadioButton("New Location", 3)
         addRadioButton("New Color", 4)
-        addRadioButton("\n Stop 3 seconds \n", 5)
-        addRadioButton("\n← EXIT \n", 6)
+        addRadioButton("Compare Colors", 5)
+        addRadioButton("Stop 3 seconds", 6)
+        addRadioButton("\n<- EXIT \n", 7)
         --
         newRow()
         addTextView("")
@@ -178,6 +179,47 @@ local dialogs = {
         --
         addTextView("")
         --
+        dialogShowFullScreen("")
+    end,
+    compare_colors = function()
+        dialogInit()
+        addTextView("")
+        --
+        if COM_COL_DATA then
+            for k, v in pairs(COL) do
+                newRow()
+                addTextView("\t " .. k .. " - RGB = " .. v.colors[1].r .. ", " .. v.colors[1].g .. ", " .. v.colors[1].b)
+            end
+        end
+        --
+        newRow()
+        addTextView("")
+        addSeparator()
+        addTextView("")
+        newRow()
+        --
+        if COM_COL_NEW then
+            for i = 1, COM_COL_NEW_NUM do
+                newRow()
+                addTextView("\t [" .. i .. "] RGB = \t") addEditNumber("COM_COL_NEW_" .. i .. "_R", 0) addEditNumber("COM_COL_NEW_" .. i .. "_G", 0) addEditNumber("COM_COL_NEW_" .. i .. "_B", 0)
+                newRow()
+                addTextView("")
+            end
+        end
+        dialogShowFullScreen("")
+    end,
+    compare_colors_menu = function()
+        dialogInit()
+        addTextView("")
+        newRow()
+        --
+        addTextView("\t Use saved colors \t\t") addCheckBox("COM_COL_DATA", "", false)
+        newRow()
+        --
+        addTextView("\t Add new colors \t\t") addCheckBox("COM_COL_NEW", "", true) addTextView("\t") addEditNumber("COM_COL_NEW_NUM", 2)
+        --
+        newRow()
+        addTextView("")
         dialogShowFullScreen("")
     end,
 }
@@ -463,6 +505,82 @@ local function menuObj()
     end
 end
 
+-- compareColors()
+-- ---------------------------------------
+local function compareColors()
+    dialogs.compare_colors()
+    local colors = {}
+
+    if COM_COL_DATA then
+        for k, v in pairs(COL) do
+            colors[k] = clone_table(v.colors[1])
+        end
+    end
+    if COM_COL_NEW then
+        for i = 1, COM_COL_NEW_NUM do
+            colors["col_" .. i] = { r = _G["COM_COL_NEW_" .. i .. "_R"], g = _G["COM_COL_NEW_" .. i .. "_G"], b = _G["COM_COL_NEW_" .. i .. "_B"] }
+        end
+    end
+
+    dialogInit()
+    --
+    for i_k, i_v in pairs(colors) do
+        local diff = { r = 0, g = 0, b = 0 }
+        --
+        addSeparator()
+        addTextView("")
+        newRow()
+        --
+        addTextView("\t Color name: " .. i_k .. " RGB (" .. i_v.r .. ", " .. i_v.g .. ", " .. i_v.b .. ")")
+        newRow()
+        addTextView("\t ----------")
+        newRow()
+        for k, v in pairs(colors) do
+            local txt = "\t [" .. k .. "]"
+            if i_k ~= k then
+                diff.r, diff.g, diff.b = v.r - i_v.r, v.g - i_v.g, v.b - i_v.b
+                txt = txt .. " DIFF = (" .. diff.r .. ", " .. diff.g .. ", " .. diff.b .. ")"
+                addTextView(txt)
+                newRow()
+                addTextView("")
+            end
+        end
+    end
+
+    dialogShowFullScreen("")
+    --
+end
+
+-- compareColorsMenu()
+-- ---------------------------------------
+local function compareColorsMenu()
+    dialogs.compare_colors_menu()
+    addTextView("\t Use saved colors \t\t") addCheckBox("COM_COL_DATA", "", false)
+    newRow()
+    --
+    addTextView("\t Add new colors \t\t") addCheckBox("COM_COL_NEW", "", true)
+    newRow()
+    --
+    addTextView("\t how many colors to add \t\t") addEditNumber("COM_COL_NEW_NUM", 2)
+
+
+    while TRUE do
+        local data_colors = count(COL)
+        --
+        --
+        if not COM_COL_DATA and not COM_COL_NEW then simpleDialog("", "\n\t Please select saved colors or add new ones to compare") break end
+        --
+        if COM_COL_DATA and COM_COL_NEW and data_colors + COM_COL_NEW_NUM < 2 then simpleDialog("", "\n\t Please add at least 2 color to compare | DATA + NEW = " .. data_colors + COM_COL_NEW_NUM) break end
+        --
+        if COM_COL_DATA and not COM_COL_NEW and data_colors < 2 then simpleDialog("", "\n\t Not enough colors in DATA = " .. data_colors) break end
+        --
+        if COM_COL_NEW and not COM_COL_DATA and COM_COL_NEW_NUM < 2 then simpleDialog("", "\n\t Please add at least 2 color to compare") break end
+
+        compareColors()
+        break
+    end
+end
+
 -- Start config
 -- ---------------------------------------
 while TRUE do
@@ -493,12 +611,10 @@ while TRUE do
     --
     dialogs.new_record()
     --
-    if NEW_REC_OP == 6 then scriptExit() end
+    if NEW_REC_OP == 7 then scriptExit() end
     --
-    if NEW_REC_OP == 5 then
-        wait(3)
-        --
-    elseif NEW_REC_OP == 1 then
+
+    if NEW_REC_OP == 1 then
         OBJ.type = "image"
         menuObj()
     elseif NEW_REC_OP == 2 then
@@ -510,6 +626,10 @@ while TRUE do
     elseif NEW_REC_OP == 4 then
         OBJ.type = "color"
         menuObj()
+    elseif NEW_REC_OP == 5 then
+        compareColorsMenu()
+    elseif NEW_REC_OP == 6 then
+        wait(3)
     end
     --
     wait(CFG_CAPTURE_WAIT)
