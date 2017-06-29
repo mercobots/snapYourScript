@@ -416,7 +416,7 @@ local function editValues()
         objHighlight()
     elseif OBJ.type == "location" or OBJ.type == "color" then
         OBJ.data = Location(EDIT_VAL_X, EDIT_VAL_Y)
-        objHighlight("start")
+        objHighlight("on")
         --
         if OBJ.type == "color" then
             local timer = Timer()
@@ -428,9 +428,10 @@ local function editValues()
                 if not is_timeout(timer, CFG_COL_CLICK_TIME) then wait(CFG_COL_CLICK_TIME - timer:set()) end
             end
             OBJ.data_color = clone_table(colors)
+            getDiff()
         end
         --
-        objHighlight("end")
+        objHighlight("off")
     end
 end
 
