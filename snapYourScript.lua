@@ -21,7 +21,7 @@ commonLib()
 
 -- luaLib
 -- ---------------------------------------
-luaLib = loadstring(httpGet("https://raw.githubusercontent.com/mercobots/luaLib/master/luaLib.min.lua"))
+luaLib = loadstring(httpGet("https://raw.githubusercontent.com/mercobots/luaLib/master/luaLib.lua"))
 luaLib()
 
 -- Dialogs
